@@ -105,7 +105,7 @@ class Player
         tf::Quaternion q;
         q.setRPY(0, 0, this->theta);
         transform.setRotation(q);
-        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "map", this->name));
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", this->name));
     }
 
     //Gets team name (accessor)
