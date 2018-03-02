@@ -143,7 +143,9 @@ class MyPlayer : public Player
         this->refereeSub = n.subscribe("make_a_play", 1000, &MyPlayer::move, this);
 
         //random position
-        srand(7492 * time(NULL));
+        struct timeval t1;
+        gettimeofday(&t1, NULL);
+        srand(t1.tv_usec);
 
         this->x = ((double)rand() / (double)RAND_MAX) * 10 - 5;
         this->y = ((double)rand() / (double)RAND_MAX) * 10 - 5;
@@ -153,20 +155,51 @@ class MyPlayer : public Player
 
     void move(const rws2018_msgs::MakeAPlay::ConstPtr &msg)
     {
-        this->x += 0.01;
-        this->pubPosition();
-    }
+        //----------------------------------
+        // AI PART
+        //----------------------------------
+        double dist = 6;
+        double delta_theta = M_PI / 2;
 
-    void pubPosition(void)
-    {
-        transform.setOrigin(tf::Vector3(this->x, this->y, 0.0));
+        //----------------------------------
+        // CONSTRAINT PART
+        //----------------------------------
+        double dist_max = msg->turtle;
+        double dist_with_constraints;
+
+        double delta_theta_max = M_PI / 30;
+
+        dist > dist_max ? dist = dist_max : dist = dist;
+        fabs(delta_theta) > fabs(delta_theta_max) ? delta_theta = delta_theta_max * delta_theta / fabs(delta_theta) : dist = dist;
+
+        // ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
+        tf::Transform tf_move;
+        tf_move.setOrigin(tf::Vector3(dist, 0.0, 0.0));
         tf::Quaternion q;
-        q.setRPY(0, 0, this->theta);
-        transform.setRotation(q);
+        q.setRPY(0.0, 0.0, delta_theta);
+        tf_move.setRotation(q);
+
+        transform = transform * tf_move;
         br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", this->name));
 
-        ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
+        // tf::Vector3 position = transform.getOrigin();
+        // this->x = position.getX();
+        // this->y = position.getY();
+        // this->theta = transform.getRotation().get
+
+        // ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
     }
+
+    // void pubPosition(void)
+    // {
+    //     transform.setOrigin(tf::Vector3(this->x, this->y, 0.0));
+    //     tf::Quaternion q;
+    //     q.setRPY(0, 0, this->theta);
+    //     transform.setRotation(q);
+    //     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", this->name));
+
+    //     ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
+    // }
 
     void warp(void)
     {
