@@ -151,21 +151,21 @@ class MyPlayer : public Player
         cout << "player.name is " << this->name << endl;
         cout << "team is " << this->getTeam() << endl;
 
-        if (red_team.playerBelongsToTeam("red"))
+        if (red_team->playerBelongsToTeam("red"))
         {
             my_team = red_team;
             preys = green_team;
             hunters = blue_team;
         }
 
-        if (red_team.playerBelongsToTeam("green"))
+        if (red_team->playerBelongsToTeam("green"))
         {
             my_team = green_team;
             preys = blue_team;
             hunters = red_team;
         }
 
-        if (red_team.playerBelongsToTeam("blue"))
+        if (red_team->playerBelongsToTeam("blue"))
         {
             my_team = blue_team;
             preys = red_team;
