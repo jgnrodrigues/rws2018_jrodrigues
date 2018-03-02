@@ -7,9 +7,14 @@
 #include <rws2018_libs/team.h>
 #include <rws2018_msgs/MakeAPlay.h>
 #include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
 #include <visualization_msgs/Marker.h>
 
+#define DEFAULT_TIME 0.05
+
 using namespace std;
+using namespace ros;
+using namespace tf;
 
 namespace rws_jrodrigues
 {
@@ -120,25 +125,26 @@ class MyPlayer : public Player
 
         ROS_INFO_STREAM("My name is " << this->name << " and my team is " << this->getTeam());
 
-        if (red_team->playerBelongsToTeam("red"))
+        if (red_team->playerBelongsToTeam(name))
         {
             my_team = red_team;
             preys = green_team;
             hunters = blue_team;
+            setTeamName("red");
         }
-
-        if (red_team->playerBelongsToTeam("green"))
+        else if (green_team->playerBelongsToTeam(name))
         {
             my_team = green_team;
             preys = blue_team;
             hunters = red_team;
+            setTeamName("green");
         }
-
-        if (red_team->playerBelongsToTeam("blue"))
+        else if (blue_team->playerBelongsToTeam(name))
         {
             my_team = blue_team;
             preys = red_team;
             hunters = green_team;
+            setTeamName("blue");
         }
 
         this->refereeSub = n.subscribe("make_a_play", 1000, &MyPlayer::move, this);
@@ -153,6 +159,7 @@ class MyPlayer : public Player
         this->y = ((double)rand() / (double)RAND_MAX) * 10 - 5;
 
         this->warp();
+        ROS_INFO_STREAM(preys->player_names[0]);
     }
 
     void move(const rws2018_msgs::MakeAPlay::ConstPtr &msg)
@@ -161,7 +168,11 @@ class MyPlayer : public Player
         // AI PART
         //----------------------------------
         double dist = 6;
-        double delta_theta = M_PI / 2;
+        double delta_theta = getAngleToPLayer(preys->player_names[0]);
+        if (isnan(delta_theta))
+        {
+            delta_theta = 0;
+        }
 
         //----------------------------------
         // CONSTRAINT PART
@@ -184,13 +195,33 @@ class MyPlayer : public Player
         transform = transform * tf_move;
         br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", this->name));
 
-        tf::Vector3 position = transform.getOrigin();
-        this->x = position.getX();
-        this->y = position.getY();
-        this->theta = transform.getRotation().getAngle();
+        // tf::Vector3 position = transform.getOrigin();
+        // this->x = position.getX();
+        // this->y = position.getY();
+        // this->theta = transform.getRotation().getAngle();
 
-        ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
-        publishBoca("YYYYEEEEEYYYY");
+        // ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
+        // publishBoca("I'm catching " + preys->player_names[0]);
+    }
+
+    double getAngleToPLayer(string other_player, double time_to_wait = DEFAULT_TIME)
+    {
+        StampedTransform t; //The transform object
+        //Time now = Time::now(); //get the time
+        Time now = Time(0); //get the latest transform received
+
+        try
+        {
+            tfListener.waitForTransform(this->name, other_player, now, Duration(time_to_wait));
+            tfListener.lookupTransform(this->name, other_player, now, t);
+        }
+        catch (TransformException &ex)
+        {
+            ROS_ERROR("%s", ex.what());
+            return NAN;
+        }
+
+        return atan2(t.getOrigin().y(), t.getOrigin().x());
     }
 
     // void pubPosition(void)
@@ -228,7 +259,7 @@ class MyPlayer : public Player
 
         marker.pose.position.y = 0.3;
         marker.pose.orientation.w = 1.0;
-        marker.scale.z = 0.5;
+        marker.scale.z = 0.3;
 
         marker.color.a = 1.0;
         marker.color.r = 0.0;
@@ -251,6 +282,7 @@ class MyPlayer : public Player
 
     tf::Transform transform;
     tf::TransformBroadcaster br;
+    tf::TransformListener tfListener;
 };
 }
 
