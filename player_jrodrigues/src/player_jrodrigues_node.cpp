@@ -11,47 +11,6 @@ using namespace std;
 
 namespace rws_jrodrigues
 {
-// class Team
-// {
-//   public:
-//     /**
-//        * @brief Constructor
-//        * @param team_name the team name
-//        */
-//     Team(string team_name)
-//     {
-//         name = team_name;
-//     }
-
-//     /**
-//        * @brief Prints the name of the team and the names of all its players
-//        */
-//     void printTeamInfo(void)
-//     {
-//         //TODO
-//     }
-
-//     /**
-//        * @brief Checks if a player belongs to the team
-//        * @param player_name the name of the player to check
-//        * @return true or false, yes or no
-//        */
-//     bool playerBelongsToTeam(string player_name)
-//     {
-//         //write code here ...
-//     }
-
-//     /**
-//        * @brief The team name
-//        */
-//     string name;
-
-//     /**
-//        * @brief A list of the team's player names
-//        */
-//     vector<string> players;
-// };
-
 class Player
 {
   public:
@@ -79,7 +38,7 @@ class Player
             return setTeamName("blue");
             break;
         default:
-            cout << "wrong team index given. Cannot set team" << endl;
+            ROS_ERROR_STREAM("wrong team index given. Cannot set team");
             break;
         }
     }
@@ -93,19 +52,9 @@ class Player
         }
         else
         {
-            cout << "cannot set team name to " << team << endl;
+            ROS_ERROR_STREAM("cannot set team name to " << team);
             return 0;
         }
-    }
-
-    void move(void)
-    {
-        static tf::Transform transform;
-        transform.setOrigin(tf::Vector3(this->x, this->y, 0.0));
-        tf::Quaternion q;
-        q.setRPY(0, 0, this->theta);
-        transform.setRotation(q);
-        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", this->name));
     }
 
     //Gets team name (accessor)
@@ -136,20 +85,7 @@ class MyPlayer : public Player
         green_team = boost::shared_ptr<Team>(new Team("green"));
         blue_team = boost::shared_ptr<Team>(new Team("blue"));
 
-        cout << "player.name is " << this->name << endl;
-        cout << "team is " << this->getTeam() << endl;
-    }
-
-    MyPlayer(string name, int team) : Player(name)
-    {
-        setTeamName(team);
-
-        red_team = boost::shared_ptr<Team>(new Team("red"));
-        green_team = boost::shared_ptr<Team>(new Team("green"));
-        blue_team = boost::shared_ptr<Team>(new Team("blue"));
-
-        cout << "player.name is " << this->name << endl;
-        cout << "team is " << this->getTeam() << endl;
+        ROS_INFO_STREAM("My name is " << this->name << " and my team is " << this->getTeam());
 
         if (red_team->playerBelongsToTeam("red"))
         {
@@ -173,6 +109,48 @@ class MyPlayer : public Player
         }
     }
 
+    MyPlayer(string name, int team) : Player(name)
+    {
+        setTeamName(team);
+
+        red_team = boost::shared_ptr<Team>(new Team("red"));
+        green_team = boost::shared_ptr<Team>(new Team("green"));
+        blue_team = boost::shared_ptr<Team>(new Team("blue"));
+
+        ROS_INFO_STREAM("My name is " << this->name << " and my team is " << this->getTeam());
+
+        if (red_team->playerBelongsToTeam("red"))
+        {
+            my_team = red_team;
+            preys = green_team;
+            hunters = blue_team;
+        }
+
+        if (red_team->playerBelongsToTeam("green"))
+        {
+            my_team = green_team;
+            preys = blue_team;
+            hunters = red_team;
+        }
+
+        if (red_team->playerBelongsToTeam("blue"))
+        {
+            my_team = blue_team;
+            preys = red_team;
+            hunters = green_team;
+        }
+    }
+
+    void move(void)
+    {
+        static tf::Transform transform;
+        transform.setOrigin(tf::Vector3(this->x, this->y, 0.0));
+        tf::Quaternion q;
+        q.setRPY(0, 0, this->theta);
+        transform.setRotation(q);
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", this->name));
+    }
+
     boost::shared_ptr<Team> my_team;
     boost::shared_ptr<Team> preys;
     boost::shared_ptr<Team> hunters;
@@ -190,9 +168,6 @@ int main(int argc, char **argv)
     string team;
     n.getParam("team", team);
     rws_jrodrigues::MyPlayer player(player_name, BLUE);
-
-    // cout << "Read team: " << team << endl;
-    // ros::spin();
 
     while (ros::ok())
     {
