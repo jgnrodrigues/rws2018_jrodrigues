@@ -210,7 +210,7 @@ class MyPlayer : public Player
         else
         {
             dist = 9999999;
-            delta_theta = getAngleToPLayer(player_to_hunt) + M_PI;
+            delta_theta = getAngleToPLayer(player_to_flee) + M_PI;
         }
 
         if (isnan(delta_theta))
