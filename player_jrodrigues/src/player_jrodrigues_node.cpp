@@ -5,6 +5,7 @@
 
 #include "teams.h"
 #include <rws2018_libs/team.h>
+#include <rws2018_msgs/MakeAPlay.h>
 #include <tf/transform_broadcaster.h>
 
 using namespace std;
@@ -139,12 +140,15 @@ class MyPlayer : public Player
             preys = red_team;
             hunters = green_team;
         }
+
+        this->refereeSub = n.subscribe("make_a_play", 1000, &MyPlayer::move, this);
     }
 
-    void move(void)
+    void move(const rws2018_msgs::MakeAPlay::ConstPtr &msg)
     {
+
         static tf::Transform transform;
-        transform.setOrigin(tf::Vector3(this->x, this->y, 0.0));
+        transform.setOrigin(tf::Vector3(this->x += 0.01, this->y, 0.0));
         tf::Quaternion q;
         q.setRPY(0, 0, this->theta);
         transform.setRotation(q);
@@ -154,6 +158,9 @@ class MyPlayer : public Player
     boost::shared_ptr<Team> my_team;
     boost::shared_ptr<Team> preys;
     boost::shared_ptr<Team> hunters;
+
+    ros::Subscriber refereeSub;
+    ros::NodeHandle n;
 };
 }
 
@@ -171,7 +178,7 @@ int main(int argc, char **argv)
 
     while (ros::ok())
     {
-        player.move();
+        // player.move();
 
         ros::spinOnce();
 
