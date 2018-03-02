@@ -7,6 +7,7 @@
 #include <rws2018_libs/team.h>
 #include <rws2018_msgs/MakeAPlay.h>
 #include <tf/transform_broadcaster.h>
+#include <visualization_msgs/Marker.h>
 
 using namespace std;
 
@@ -141,6 +142,7 @@ class MyPlayer : public Player
         }
 
         this->refereeSub = n.subscribe("make_a_play", 1000, &MyPlayer::move, this);
+        this->bocasPub = n.advertise<visualization_msgs::Marker>("/bocas", 0);
 
         //random position
         struct timeval t1;
@@ -182,12 +184,13 @@ class MyPlayer : public Player
         transform = transform * tf_move;
         br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", this->name));
 
-        // tf::Vector3 position = transform.getOrigin();
-        // this->x = position.getX();
-        // this->y = position.getY();
-        // this->theta = transform.getRotation().get
+        tf::Vector3 position = transform.getOrigin();
+        this->x = position.getX();
+        this->y = position.getY();
+        this->theta = transform.getRotation().getAngle();
 
-        // ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
+        ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
+        publishBoca("YYYYEEEEEYYYY");
     }
 
     // void pubPosition(void)
@@ -210,14 +213,41 @@ class MyPlayer : public Player
         br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", this->name));
 
         ROS_INFO("Warp to x=%f, y=%f, theta=%f", x, y, theta);
+        publishBoca("YYYYEEEEEYYYY");
+    }
+
+    void publishBoca(string boca, int action = visualization_msgs::Marker::ADD)
+    {
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = this->name;
+        marker.header.stamp = ros::Time();
+        marker.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        marker.id = 0;
+        marker.ns = this->name;
+        marker.action = action;
+
+        marker.pose.position.y = 0.3;
+        marker.pose.orientation.w = 1.0;
+        marker.scale.z = 0.5;
+
+        marker.color.a = 1.0;
+        marker.color.r = 0.0;
+        marker.color.g = 0.0;
+        marker.color.b = 1.0;
+
+        marker.lifetime = ros::Duration(1.0);
+
+        marker.text = boca;
+        bocasPub.publish(marker);
     }
 
     boost::shared_ptr<Team> my_team;
     boost::shared_ptr<Team> preys;
     boost::shared_ptr<Team> hunters;
 
-    ros::Subscriber refereeSub;
     ros::NodeHandle n;
+    ros::Subscriber refereeSub;
+    ros::Publisher bocasPub;
 
     tf::Transform transform;
     tf::TransformBroadcaster br;
@@ -231,6 +261,7 @@ int main(int argc, char **argv)
     ros::Rate loop_rate(10);
 
     string player_name = "jrodrigues";
+
     //Creating an instance of class Player
     string team;
     n.getParam("team", team);
