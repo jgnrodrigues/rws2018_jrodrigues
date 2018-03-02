@@ -159,7 +159,7 @@ class MyPlayer : public Player
         this->y = ((double)rand() / (double)RAND_MAX) * 10 - 5;
 
         this->warp();
-        ROS_INFO_STREAM(preys->player_names[0]);
+        // ROS_INFO_STREAM(preys->player_names[0]);
     }
 
     void move(const rws2018_msgs::MakeAPlay::ConstPtr &msg)
@@ -170,20 +170,48 @@ class MyPlayer : public Player
         double min_distance = 99999;
         string player_to_hunt = "no player";
         double dist = 1;
+        double prey_dist = 1;
+        double hunter_dist = 1;
+        //catch prey
         for (size_t i = 0; i < preys->player_names.size(); i++)
         {
-            double dist = getDistanceToPlayer(preys->player_names[i]);
-            if (isnan(dist))
+            double prey_dist = getDistanceToPlayer(preys->player_names[i]);
+            if (isnan(prey_dist))
             {
             }
-            else if (dist < min_distance)
+            else if (prey_dist < min_distance)
             {
-                min_distance = dist;
+                min_distance = prey_dist;
                 player_to_hunt = preys->player_names[i];
             }
         }
 
-        double delta_theta = getAngleToPLayer(player_to_hunt);
+        //flee hunter
+        for (size_t i = 0; i < hunters->player_names.size(); i++)
+        {
+            double hunter_dist = getDistanceToPlayer(hunters->player_names[i]);
+            if (isnan(hunter_dist))
+            {
+            }
+            else if (hunter_dist < min_distance)
+            {
+                min_distance = hunter_dist;
+                player_to_hunt = hunters->player_names[i];
+            }
+        }
+
+        double delta_theta = 0;
+        if (prey_dist < hunter_dist)
+        {
+            dist = prey_dist;
+            delta_theta = getAngleToPLayer(player_to_hunt);
+        }
+        else
+        {
+            dist = 9999999;
+            delta_theta = getAngleToPLayer(player_to_hunt) + M_PI;
+        }
+
         if (isnan(delta_theta))
         {
             delta_theta = 0;
