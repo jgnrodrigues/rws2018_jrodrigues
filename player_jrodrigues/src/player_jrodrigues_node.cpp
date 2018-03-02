@@ -65,7 +65,6 @@ class Player
     boost::shared_ptr<Team> red_team;
     boost::shared_ptr<Team> blue_team;
     boost::shared_ptr<Team> green_team;
-    tf::TransformBroadcaster br;
 
     double x;
     double y;
@@ -142,17 +141,42 @@ class MyPlayer : public Player
         }
 
         this->refereeSub = n.subscribe("make_a_play", 1000, &MyPlayer::move, this);
+
+        //random position
+        srand(7492 * time(NULL));
+
+        this->x = ((double)rand() / (double)RAND_MAX) * 10 - 5;
+        this->y = ((double)rand() / (double)RAND_MAX) * 10 - 5;
+
+        this->warp();
     }
 
     void move(const rws2018_msgs::MakeAPlay::ConstPtr &msg)
     {
+        this->x += 0.01;
+        this->pubPosition();
+    }
 
-        static tf::Transform transform;
-        transform.setOrigin(tf::Vector3(this->x += 0.01, this->y, 0.0));
+    void pubPosition(void)
+    {
+        transform.setOrigin(tf::Vector3(this->x, this->y, 0.0));
         tf::Quaternion q;
         q.setRPY(0, 0, this->theta);
         transform.setRotation(q);
         br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", this->name));
+
+        ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
+    }
+
+    void warp(void)
+    {
+        transform.setOrigin(tf::Vector3(this->x, this->y, 0.0));
+        tf::Quaternion q;
+        q.setRPY(0, 0, this->theta);
+        transform.setRotation(q);
+        br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", this->name));
+
+        ROS_INFO("Warp to x=%f, y=%f, theta=%f", x, y, theta);
     }
 
     boost::shared_ptr<Team> my_team;
@@ -161,6 +185,9 @@ class MyPlayer : public Player
 
     ros::Subscriber refereeSub;
     ros::NodeHandle n;
+
+    tf::Transform transform;
+    tf::TransformBroadcaster br;
 };
 }
 
@@ -176,12 +203,14 @@ int main(int argc, char **argv)
     n.getParam("team", team);
     rws_jrodrigues::MyPlayer player(player_name, BLUE);
 
-    while (ros::ok())
-    {
-        // player.move();
+    ros::spin();
 
-        ros::spinOnce();
+    // while (ros::ok())
+    // {
+    //     // player.move();
 
-        loop_rate.sleep();
-    }
+    //     ros::spinOnce();
+
+    //     loop_rate.sleep();
+    // }
 }
