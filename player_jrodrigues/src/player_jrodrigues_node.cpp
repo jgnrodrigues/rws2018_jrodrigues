@@ -169,9 +169,10 @@ class MyPlayer : public Player
         //----------------------------------
         double min_distance = 99999;
         string player_to_hunt = "no player";
+        string player_to_flee = "no player";
         double dist = 1;
-        double prey_dist = 1;
-        double hunter_dist = 1;
+        double prey_dist = 99999;
+        double hunter_dist = 9999999;
         //catch prey
         for (size_t i = 0; i < preys->player_names.size(); i++)
         {
@@ -196,7 +197,7 @@ class MyPlayer : public Player
             else if (hunter_dist < min_distance)
             {
                 min_distance = hunter_dist;
-                player_to_hunt = hunters->player_names[i];
+                player_to_flee = hunters->player_names[i];
             }
         }
 
