@@ -167,8 +167,23 @@ class MyPlayer : public Player
         //----------------------------------
         // AI PART
         //----------------------------------
-        double dist = 6;
-        double delta_theta = getAngleToPLayer(preys->player_names[0]);
+        double min_distance = 99999;
+        string player_to_hunt = "no player";
+        double dist = 1;
+        for (size_t i = 0; i < preys->player_names.size(); i++)
+        {
+            double dist = getDistanceToPlayer(preys->player_names[i]);
+            if (isnan(dist))
+            {
+            }
+            else if (dist < min_distance)
+            {
+                min_distance = dist;
+                player_to_hunt = preys->player_names[i];
+            }
+        }
+
+        double delta_theta = getAngleToPLayer(player_to_hunt);
         if (isnan(delta_theta))
         {
             delta_theta = 0;
@@ -201,7 +216,27 @@ class MyPlayer : public Player
         // this->theta = transform.getRotation().getAngle();
 
         // ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
-        // publishBoca("I'm catching " + preys->player_names[0]);
+        publishBoca("I'm catching " + player_to_hunt);
+    }
+
+    double getDistanceToPlayer(string other_player, double time_to_wait = DEFAULT_TIME)
+    {
+        StampedTransform t; //The transform object
+        //Time now = Time::now(); //get the time
+        Time now = Time(0); //get the latest transform received
+
+        try
+        {
+            tfListener.waitForTransform(name, other_player, now, Duration(time_to_wait));
+            tfListener.lookupTransform(name, other_player, now, t);
+        }
+        catch (TransformException &ex)
+        {
+            ROS_ERROR("%s", ex.what());
+            return NAN;
+        }
+
+        return sqrt(t.getOrigin().y() * t.getOrigin().y() + t.getOrigin().x() * t.getOrigin().x());
     }
 
     double getAngleToPLayer(string other_player, double time_to_wait = DEFAULT_TIME)
