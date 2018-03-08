@@ -12,7 +12,7 @@
 
 #define DEFAULT_TIME 0.05
 #define KP 1.2
-#define KD 2.5
+#define KD 4
 
 using namespace std;
 using namespace ros;
