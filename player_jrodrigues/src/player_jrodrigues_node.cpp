@@ -11,8 +11,8 @@
 #include <visualization_msgs/Marker.h>
 
 #define DEFAULT_TIME 0.05
-#define KP 1.2
-#define KD 4
+#define KP 1
+#define KD 1
 
 using namespace std;
 using namespace ros;
@@ -207,9 +207,9 @@ class MyPlayer : public Player
         }
 
         double delta_theta = 0;
-        if ((min_prey_distance < min_hunter_distance) || (min_hunter_distance > 2.0))
+        if ((min_prey_distance < min_hunter_distance) || (min_hunter_distance > 2.5))
         {
-            min_prey_distance < 0.5 ? dist = min_prey_distance : dist = 999999;
+            min_prey_distance < 1.0 ? dist = min_prey_distance : dist = 999999;
             delta_theta = getAngleToPLayer(player_to_hunt);
         }
         else
@@ -220,7 +220,7 @@ class MyPlayer : public Player
             //DON'T ESCAPE
             //--------------------------
 
-            if (getDistanceToPlayer("world") > 4.5)
+            if (getDistanceToPlayer("world") > 7)
             {
                 delta_theta = getAngleToPLayer("world") + M_PI / 2;
             }
@@ -234,7 +234,7 @@ class MyPlayer : public Player
         //----------------------------------
         // CONSTRAINT PART
         //----------------------------------
-        double dist_max = msg->turtle;
+        double dist_max = msg->dog;
         double dist_with_constraints;
 
         double delta_theta_max = M_PI / 30;
