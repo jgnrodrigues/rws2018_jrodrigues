@@ -6,13 +6,21 @@
 #include "teams.h"
 #include <rws2018_libs/team.h>
 #include <rws2018_msgs/MakeAPlay.h>
+#include <rws2018_msgs/GameQuery.h>
+#include <sensor_msgs/PointCloud2.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_listener.h>
 #include <visualization_msgs/Marker.h>
 
+// #include <pcl_conversions/pcl_conversions.h>
+// #include <pcl/point_types.h>
+// #include <pcl/PCLPointCloud2.h>
+// #include <pcl/conversions.h>
+// #include <pcl_ros/transforms.h>
+
 #define DEFAULT_TIME 0.05
-#define KP 1
-#define KD 1
+#define KP 1.5
+#define KD 0.8
 
 using namespace std;
 using namespace ros;
@@ -150,7 +158,10 @@ class MyPlayer : public Player
         }
 
         this->refereeSub = n.subscribe("make_a_play", 1000, &MyPlayer::move, this);
+        pointCloudSub = n.subscribe("/object_point_cloud", 1000, &MyPlayer::respondPointCloud, this);
         this->bocasPub = n.advertise<visualization_msgs::Marker>("/bocas", 0);
+        game_query_srv = boost::shared_ptr<ros::ServiceServer>(new ros::ServiceServer());
+        *game_query_srv = n.advertiseService("/" + name + "/game_query", &MyPlayer::respondQuery, this);
 
         //random position
         struct timeval t1;
@@ -161,6 +172,8 @@ class MyPlayer : public Player
 
         this->x = ((double)rand() / (double)RAND_MAX) * 10 - 5;
         this->y = ((double)rand() / (double)RAND_MAX) * 10 - 5;
+
+        object = "onion";
 
         this->warp();
         // ROS_INFO_STREAM(preys->player_names[0]);
@@ -222,6 +235,7 @@ class MyPlayer : public Player
 
             if (getDistanceToPlayer("world") > 7)
             {
+                // delta_theta = getAngleToPLayer("world") - ((M_PI / 2) * fabs(getAngleToPLayer("world")) / getAngleToPLayer("world"));
                 delta_theta = getAngleToPLayer("world") + M_PI / 2;
             }
         }
@@ -230,6 +244,9 @@ class MyPlayer : public Player
         {
             delta_theta = 0;
         }
+
+        delta_theta = pd(delta_theta);
+        this->last_angle = delta_theta;
 
         //----------------------------------
         // CONSTRAINT PART
@@ -241,9 +258,6 @@ class MyPlayer : public Player
 
         dist > dist_max ? dist = dist_max : dist = dist;
         fabs(delta_theta) > fabs(delta_theta_max) ? delta_theta = delta_theta_max * delta_theta / fabs(delta_theta) : dist = dist;
-
-        delta_theta = pd(delta_theta);
-        this->last_angle = delta_theta;
 
         // ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
         tf::Transform tf_move;
@@ -314,17 +328,6 @@ class MyPlayer : public Player
         return atan2(t.getOrigin().y(), t.getOrigin().x());
     }
 
-    // void pubPosition(void)
-    // {
-    //     transform.setOrigin(tf::Vector3(this->x, this->y, 0.0));
-    //     tf::Quaternion q;
-    //     q.setRPY(0, 0, this->theta);
-    //     transform.setRotation(q);
-    //     br.sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", this->name));
-
-    //     ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
-    // }
-
     void warp(void)
     {
         transform.setOrigin(tf::Vector3(this->x, this->y, 0.0));
@@ -362,12 +365,37 @@ class MyPlayer : public Player
         bocasPub.publish(marker);
     }
 
+    void respondPointCloud(const sensor_msgs::PointCloud2::ConstPtr &msg)
+    {
+        ROS_INFO("Recebi uma PointCloud");
+
+        // pcl::PCLPointCloud2 pcl_pc2;
+        // pcl_conversions::toPCL(*msg, pcl_pc2);
+        // pcl::PointCloud<pcl::PointXYZ>::Ptr temp_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+        // pcl::fromPCLPointCloud2(pcl_pc2, *temp_cloud);
+
+        // double x_avg = 0;
+        // for (int i = 0; i < temp_cloud->points.size(); i++)
+        // {
+
+        // }
+        object = "banana";
+    }
+
+    bool respondQuery(rws2018_msgs::GameQuery::Request &req, rws2018_msgs::GameQuery::Response &res)
+    {
+        ROS_WARN_STREAM("I am " << name << "and I am responding to a service request");
+        res.resposta = object;
+        return true;
+    }
+
     boost::shared_ptr<Team> my_team;
     boost::shared_ptr<Team> preys;
     boost::shared_ptr<Team> hunters;
 
     ros::NodeHandle n;
     ros::Subscriber refereeSub;
+    ros::Subscriber pointCloudSub;
     ros::Publisher bocasPub;
 
     tf::Transform transform;
@@ -375,6 +403,8 @@ class MyPlayer : public Player
     tf::TransformListener tfListener;
     double last_angle;
     Time last_time;
+    string object;
+    boost::shared_ptr<ros::ServiceServer> game_query_srv;
 };
 }
 
