@@ -216,13 +216,21 @@ class MyPlayer : public Player
         {
             dist = 9999999;
             delta_theta = -getAngleToPLayer(player_to_flee);
+            //---------------------------
+            //DON'T ESCAPE
+            //--------------------------
+
+            if (getDistanceToPlayer("world") > 4.5)
+            {
+                delta_theta = getAngleToPLayer("world") + M_PI / 2;
+            }
         }
 
         if (isnan(delta_theta))
         {
             delta_theta = 0;
         }
-        delta_theta = pd(delta_theta);
+
         //----------------------------------
         // CONSTRAINT PART
         //----------------------------------
@@ -233,6 +241,8 @@ class MyPlayer : public Player
 
         dist > dist_max ? dist = dist_max : dist = dist;
         fabs(delta_theta) > fabs(delta_theta_max) ? delta_theta = delta_theta_max * delta_theta / fabs(delta_theta) : dist = dist;
+
+        delta_theta = pd(delta_theta);
         this->last_angle = delta_theta;
 
         // ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
