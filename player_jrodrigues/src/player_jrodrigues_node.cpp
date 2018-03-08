@@ -11,6 +11,8 @@
 #include <visualization_msgs/Marker.h>
 
 #define DEFAULT_TIME 0.05
+#define KP 1.2
+#define KD 2.5
 
 using namespace std;
 using namespace ros;
@@ -154,6 +156,8 @@ class MyPlayer : public Player
         struct timeval t1;
         gettimeofday(&t1, NULL);
         srand(t1.tv_usec);
+        this->last_time = ros::Time::now();
+        this->last_angle = 0.0;
 
         this->x = ((double)rand() / (double)RAND_MAX) * 10 - 5;
         this->y = ((double)rand() / (double)RAND_MAX) * 10 - 5;
@@ -167,57 +171,58 @@ class MyPlayer : public Player
         //----------------------------------
         // AI PART
         //----------------------------------
-        double min_distance = 99999;
+        double min_prey_distance = 99999;
         string player_to_hunt = "no player";
         string player_to_flee = "no player";
         double dist = 1;
         double prey_dist = 99999;
         double hunter_dist = 9999999;
         //catch prey
-        for (size_t i = 0; i < preys->player_names.size(); i++)
+        for (size_t i = 0; i < msg->red_alive.size(); i++)
         {
-            double prey_dist = getDistanceToPlayer(preys->player_names[i]);
+            prey_dist = getDistanceToPlayer(msg->red_alive[i]);
             if (isnan(prey_dist))
             {
             }
-            else if (prey_dist < min_distance)
+            else if (prey_dist < min_prey_distance)
             {
-                min_distance = prey_dist;
-                player_to_hunt = preys->player_names[i];
+                min_prey_distance = prey_dist;
+                player_to_hunt = msg->red_alive[i];
             }
         }
 
         //flee hunter
-        for (size_t i = 0; i < hunters->player_names.size(); i++)
+        double min_hunter_distance = 99999;
+        for (size_t i = 0; i < msg->green_alive.size(); i++)
         {
-            double hunter_dist = getDistanceToPlayer(hunters->player_names[i]);
+            hunter_dist = getDistanceToPlayer(msg->green_alive[i]);
             if (isnan(hunter_dist))
             {
             }
-            else if (hunter_dist < min_distance)
+            else if (hunter_dist < min_hunter_distance)
             {
-                min_distance = hunter_dist;
-                player_to_flee = hunters->player_names[i];
+                min_hunter_distance = hunter_dist;
+                player_to_flee = msg->green_alive[i];
             }
         }
 
         double delta_theta = 0;
-        if (prey_dist < hunter_dist)
+        if ((min_prey_distance < min_hunter_distance) || (min_hunter_distance > 2.0))
         {
-            dist = prey_dist;
+            min_prey_distance < 0.5 ? dist = min_prey_distance : dist = 999999;
             delta_theta = getAngleToPLayer(player_to_hunt);
         }
         else
         {
             dist = 9999999;
-            delta_theta = getAngleToPLayer(player_to_flee) + M_PI;
+            delta_theta = -getAngleToPLayer(player_to_flee);
         }
 
         if (isnan(delta_theta))
         {
             delta_theta = 0;
         }
-
+        delta_theta = pd(delta_theta);
         //----------------------------------
         // CONSTRAINT PART
         //----------------------------------
@@ -228,6 +233,7 @@ class MyPlayer : public Player
 
         dist > dist_max ? dist = dist_max : dist = dist;
         fabs(delta_theta) > fabs(delta_theta_max) ? delta_theta = delta_theta_max * delta_theta / fabs(delta_theta) : dist = dist;
+        this->last_angle = delta_theta;
 
         // ROS_INFO("Go to x=%f, y=%f, theta=%f", x, y, theta);
         tf::Transform tf_move;
@@ -266,6 +272,16 @@ class MyPlayer : public Player
         }
 
         return sqrt(t.getOrigin().y() * t.getOrigin().y() + t.getOrigin().x() * t.getOrigin().x());
+    }
+
+    double pd(double angle)
+    {
+        Time current_time = ros::Time::now();
+        double dt = current_time.nsec - last_time.nsec;
+        double derivative = (angle - last_angle) / dt;
+        double output = KP * angle + KD * derivative;
+        last_time = current_time;
+        return output;
     }
 
     double getAngleToPLayer(string other_player, double time_to_wait = DEFAULT_TIME)
@@ -347,6 +363,8 @@ class MyPlayer : public Player
     tf::Transform transform;
     tf::TransformBroadcaster br;
     tf::TransformListener tfListener;
+    double last_angle;
+    Time last_time;
 };
 }
 
